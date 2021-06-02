@@ -132,3 +132,5 @@ dmypy.json
 .idea
 settings.json
 Planet
+Test Data
+training_history
