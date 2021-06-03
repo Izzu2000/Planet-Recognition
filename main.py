@@ -1,22 +1,19 @@
 import tkinter as tk
-import itertools
 from tkinter import filedialog
 import json
 import contextlib
-import matplotlib.pyplot as plt
 import numpy as np
 import os
 import tensorflow as tf
 from tensorflow import keras
-from tensorflow.keras import datasets, layers, models
-import matplotlib.pyplot as plt
+from tensorflow.keras import layers, models
 
 # Constants
 SETTINGS_PATH = 'settings.json'
 PLANET_PATH_KEY = "planet_folder_path"
 TRAINING_PATH_KEY = 'training_history_path'
 CLASS_KEY = 'classes_saved'
-IMAGE_WIDTH, IMAGE_HEIGHT = 128, 128
+IMAGE_WIDTH, IMAGE_HEIGHT = 700, 700
 
 
 def save(data):
@@ -49,7 +46,7 @@ def get_folder_image(path):
         if not os.path.isdir(full_path):
             yield full_path
         else:
-            yield (file, [*get_folder_image(full_path)])
+            yield file, [*get_folder_image(full_path)]
 
 
 def get_folder(path):
@@ -107,6 +104,25 @@ def produce_dataset(dataset_dict):
 def create_or_load_model(objects, **settings):
     if not (path := settings.get(TRAINING_PATH_KEY)):
         ACTIVATION_FUNC = 'relu'
+
+        # Input shape is (IMAGE_HEIGHT, IMAGE_WIDTH, 3)
+        # - reduce computational time if image size is lower
+        # - introduces the same resolution for all images input
+        # 3 refers to the channels
+
+        # Using max pooling
+        # - to focus on the planet itself
+        # - ignore the dark background of space
+
+        # activation: relu
+        # - to extract feature from planets
+
+        # Flatten is the conversion to be inputted into the node
+
+        # it contain 128 nodes
+        # contains 5 nodes for the output layer
+
+        # Final dense is for the 5 objects classified
         model = models.Sequential([
             layers.experimental.preprocessing.Rescaling(1. / 255, input_shape=(IMAGE_HEIGHT, IMAGE_WIDTH, 3)),
             layers.Conv2D(16, 3, padding='same', activation=ACTIVATION_FUNC),
@@ -120,6 +136,12 @@ def create_or_load_model(objects, **settings):
             layers.Dense(objects)
         ])
 
+        # Adam is the best among the adaptive optimizers for most cases
+        # -combinations of Adadelta and RMSprop, recommended to use adam for most cases
+
+        # SparseCategoricalCrossentropy pretty much does computes the loss
+
+        # metrics just shows our accuracy
         model.compile(optimizer='adam',
                       loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
                       metrics=['accuracy'])
@@ -136,22 +158,15 @@ def data_train(**settings):
     train_ds = tf.keras.preprocessing.image_dataset_from_directory(
         planet_path,
         image_size=(IMAGE_HEIGHT, IMAGE_WIDTH),
-        batch_size=BATCH_SIZE)
+        batch_size=BATCH_SIZE
+    )
 
     settings = save_key(CLASS_KEY, train_ds.class_names)
 
     print("classes:", train_ds.class_names)
-    # val_ds = tf.keras.preprocessing.image_dataset_from_directory(
-    #     planet_path,
-    #     validation_split=0.2,
-    #     subset="validation",
-    #     seed=123,
-    #     image_size=(IMAGE_HEIGHT, IMAGE_WIDTH),
-    #     batch_size=BATCH_SIZE)
-
     # Normalization
+    # changes from [0, 255] into [0, 1] ranges
     normalization_layer = layers.experimental.preprocessing.Rescaling(1. / 255)
-
     train_ds.map(lambda x, y: (normalization_layer(x), y))
 
     # Get/create model
@@ -167,9 +182,9 @@ def test_data(path, label, **data):
         path, target_size=(IMAGE_HEIGHT, IMAGE_WIDTH)
     )
     img_array = keras.preprocessing.image.img_to_array(img)
-    img_array = tf.expand_dims(img_array, 0) # Create a batch
+    img_array = tf.expand_dims(img_array, 0)
 
-    model = keras.models.load_model(history_path)
+    model = keras.models.load_model(data.get(TRAINING_PATH_KEY))
     predictions = model.predict(img_array)
     score = tf.nn.softmax(predictions[0])
 
@@ -180,9 +195,10 @@ def test_data(path, label, **data):
 
 if __name__ == '__main__':
     settings = load_settings()
-    # load_GUI(**settings)
-    # data_train(**settings)
-    history_path = settings.get(TRAINING_PATH_KEY)
+    # load_GUI(**settings) do this once gui is made
+    # data_train(**settings) do this when you wanna train
+
+    # Do this if you wanna check every test data there are
     root = 'C:/Users/izzu/PycharmProjects/Planet-Recognition/Test Data'
     for x in os.listdir(root):
         y = x.split()[0]
