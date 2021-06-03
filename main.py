@@ -39,20 +39,6 @@ def load_settings():
     return save({})
 
 
-def get_folder_image(path):
-    for file in os.listdir(path):
-        full_path = f"{path}/{file}"
-        print("Reading:", full_path)
-        if not os.path.isdir(full_path):
-            yield full_path
-        else:
-            yield file, [*get_folder_image(full_path)]
-
-
-def get_folder(path):
-    return {k: v for k, v in get_folder_image(path)}
-
-
 def load_GUI(**options):
     window = tk.Tk()
     top_frame = tk.Frame(master=window, width=20, height=50, bg="red")
@@ -73,32 +59,9 @@ def load_GUI(**options):
         options.update({PLANET_PATH_KEY: planet_path})
         save(options)
 
-    get_files = list(get_folder(planet_path))
     text_box = tk.Text()
     text_box.pack()
     window.mainloop()
-
-
-def process_path(file_path, label):
-    image_string = tf.io.read_file(file_path)
-    image_decoded = tf.image.decode_jpeg(image_string, channels=3)
-    img = tf.image.resize(image_decoded, [IMAGE_HEIGHT, IMAGE_WIDTH])
-    print(file_path, label)
-    return img, label
-
-
-def produce_dataset(dataset_dict):
-    constant_label, constant_path = [], []
-    for label, paths in dataset_dict.items():
-        for path in paths:
-            constant_label.append(label)
-            constant_path.append(path)
-    const_l = tf.constant(constant_label)
-    const_p = tf.constant(constant_path)
-    dataset = tf.data.Dataset.from_tensor_slices((const_p, const_l))
-    dataset = dataset.map(process_path)
-    dataset = dataset.batch(2)
-    return dataset
 
 
 def create_or_load_model(objects, **settings):
@@ -120,8 +83,6 @@ def create_or_load_model(objects, **settings):
         # Flatten is the conversion to be inputted into the node
 
         # it contain 128 nodes
-        # contains 5 nodes for the output layer
-
         # Final dense is for the 5 objects classified
         model = models.Sequential([
             layers.experimental.preprocessing.Rescaling(1. / 255, input_shape=(IMAGE_HEIGHT, IMAGE_WIDTH, 3)),
@@ -142,9 +103,11 @@ def create_or_load_model(objects, **settings):
         # SparseCategoricalCrossentropy pretty much does computes the loss
 
         # metrics just shows our accuracy
-        model.compile(optimizer='adam',
-                      loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-                      metrics=['accuracy'])
+        model.compile(
+            optimizer='adam',
+            loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+            metrics=['accuracy']
+        )
         path = 'training_history'
         settings.update(save_key(TRAINING_PATH_KEY, path))
         return model
@@ -155,8 +118,20 @@ def create_or_load_model(objects, **settings):
 def data_train(**settings):
     planet_path = settings.get(PLANET_PATH_KEY)
     BATCH_SIZE = 5
+    # gets all the images from a root folder, Planet -> Jupiter, Mars, ...
     train_ds = tf.keras.preprocessing.image_dataset_from_directory(
         planet_path,
+        subset='training',
+        seed=500,
+        validation_split=0.1,
+        image_size=(IMAGE_HEIGHT, IMAGE_WIDTH),
+        batch_size=BATCH_SIZE
+    )
+    valid_ds = tf.keras.preprocessing.image_dataset_from_directory(
+        planet_path,
+        subset='validation',
+        seed=500,
+        validation_split=0.5,
         image_size=(IMAGE_HEIGHT, IMAGE_WIDTH),
         batch_size=BATCH_SIZE
     )
@@ -165,43 +140,71 @@ def data_train(**settings):
 
     print("classes:", train_ds.class_names)
     # Normalization
-    # changes from [0, 255] into [0, 1] ranges
+    # changes from [0, 255] into [0, 1] ranges,
     normalization_layer = layers.experimental.preprocessing.Rescaling(1. / 255)
-    train_ds.map(lambda x, y: (normalization_layer(x), y))
+
+    def func(x, y):
+        print("Normalizing")
+        return normalization_layer(x), y
+
+    train_ds.map(func)
 
     # Get/create model
     model = create_or_load_model(len(train_ds.class_names))
 
-    epochs = 50
-    model.fit(train_ds, epochs=epochs)
+    epochs = 200
+    # trains it with whatever epoch given
+    model.fit(train_ds, validation_data=valid_ds, epochs=epochs)
+
+    # saves the model
     model.save(settings.get(TRAINING_PATH_KEY))
 
 
 def test_data(path, label, **data):
+    # Loads the image, and resize to the target_size
     img = keras.preprocessing.image.load_img(
         path, target_size=(IMAGE_HEIGHT, IMAGE_WIDTH)
     )
+
+    # converts PIL image into numpy array
+    # image -> [[r, g, b], ..., [r, g, b]] array
     img_array = keras.preprocessing.image.img_to_array(img)
+
+    # [r, g, b] -> [a, r, g, b]
     img_array = tf.expand_dims(img_array, 0)
 
+    # gets the saved model, predict and get the score
     model = keras.models.load_model(data.get(TRAINING_PATH_KEY))
     predictions = model.predict(img_array)
+    # returns a list of scores for all 5 nodes
     score = tf.nn.softmax(predictions[0])
 
+    # get all class as a list
     classes = data[CLASS_KEY]
-    print("Predicted Planet:", classes[np.argmax(score)], 100 * np.max(score))
+    # np.argmax gets the index of the highest value
+    # np.max gets the highest value of the list
+    predicted = classes[np.argmax(score)]
+    score = 100 * np.max(score)
+    print("Predicted Planet:", predicted,score )
     print("Actual Planet:", label)
+    return predicted, score
 
 
 if __name__ == '__main__':
     settings = load_settings()
     # load_GUI(**settings) do this once gui is made
-    # data_train(**settings) do this when you wanna train
+    # data_train(**settings)
 
     # Do this if you wanna check every test data there are
-    root = 'C:/Users/izzu/PycharmProjects/Planet-Recognition/Test Data'
-    for x in os.listdir(root):
+    root = 'C:/Users/izzu/PycharmProjects/Planet-Recognition/Test Images'
+
+
+    def predicting(x):
         y = x.split()[0]
         z = y.split('.')[0]
-        test_data(f"{root}/{x}", z.capitalize(), **settings)
+        predicted, _ = test_data(f"{root}/{x}", z.capitalize(), **settings)
         print()
+        return predicted == z.capitalize()
+
+    results = [*map(predicting, os.listdir(root))]
+    print("Final Accuracy:", sum(results) / len(results) * 100)
