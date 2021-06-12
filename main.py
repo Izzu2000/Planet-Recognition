@@ -115,8 +115,7 @@ def create_or_load_model(objects, **settings):
     return keras.models.load_model(path)
 
 
-def data_train(**settings):
-    planet_path = settings.get(PLANET_PATH_KEY)
+def data_train(planet_path, epochs=200):
     BATCH_SIZE = 5
     # gets all the images from a root folder, Planet -> Jupiter, Mars, ...
     train_ds = tf.keras.preprocessing.image_dataset_from_directory(
@@ -152,7 +151,6 @@ def data_train(**settings):
     # Get/create model
     model = create_or_load_model(len(train_ds.class_names))
 
-    epochs = 200
     # trains it with whatever epoch given
     model.fit(train_ds, validation_data=valid_ds, epochs=epochs)
 
@@ -185,26 +183,51 @@ def test_data(path, label, **data):
     # np.max gets the highest value of the list
     predicted = classes[np.argmax(score)]
     score = 100 * np.max(score)
-    print("Predicted Planet:", predicted,score )
+    print("Predicted Planet:", predicted, score)
     print("Actual Planet:", label)
-    return predicted, score
+    return predicted, score, label
+
+
+def get_training_folder(ask=False, **options):
+    if not (planet_path := options.get(PLANET_PATH_KEY) and not ask):
+        planet_path = filedialog.askdirectory()
+        options.update({PLANET_PATH_KEY: planet_path})
+        save(options)
+    print("Training Path:", planet_path)
+    return planet_path
+
+
+def test_single_data(path):
+    path = path.replace("/", "\\")
+    x = path.split('\\')[-1]
+    y = x.split()[0]
+    z = y.split('.')[0]
+    return test_data(path, z.capitalize(), **settings)
+
+
+def test_folder_data(root):
+    def predicting(x):
+        predicted, _, label = test_single_data(f"{root}/{x}")
+        print()
+        return predicted == label
+
+    results = [*map(predicting, os.listdir(root))]
+    print("Final Accuracy:", sum(results) / len(results) * 100)
 
 
 if __name__ == '__main__':
     settings = load_settings()
     # load_GUI(**settings) do this once gui is made
-    # data_train(**settings)
+
+    # Asks for training path
+    # training_path = r"C:\Users\sarah\PycharmProjects\Planet-Recognition\Planet"
+    # # Train the model
+    # data_train(training_path, epochs=2)
 
     # Do this if you wanna check every test data there are
-    root = 'C:/Users/izzu/PycharmProjects/Planet-Recognition/Test Images'
+    # root = r'C:\Users\sarah\PycharmProjects\Planet-Recognition\Test Images'
+    # test_folder_data(root)
 
-
-    def predicting(x):
-        y = x.split()[0]
-        z = y.split('.')[0]
-        predicted, _ = test_data(f"{root}/{x}", z.capitalize(), **settings)
-        print()
-        return predicted == z.capitalize()
-
-    results = [*map(predicting, os.listdir(root))]
-    print("Final Accuracy:", sum(results) / len(results) * 100)
+    # # Do this if you want to test 1 data
+    path = r"C:\Users\sarah\PycharmProjects\Planet-Recognition\Test Images\Earth 2.jpg"
+    test_single_data(path)
