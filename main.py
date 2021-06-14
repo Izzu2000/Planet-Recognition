@@ -220,9 +220,9 @@ if __name__ == '__main__':
     # load_GUI(**settings) do this once gui is made
 
     # Asks for training path
-    # training_path = r"C:\Users\sarah\PycharmProjects\Planet-Recognition\Planet"
-    # # Train the model
-    # data_train(training_path, epochs=2)
+    training_path = r"C:\Users\sarah\PycharmProjects\Planet-Recognition\Planet"
+    # Train the model
+    data_train(training_path, epochs=2)
 
     # Do this if you wanna check every test data there are
     root = r'C:\Users\sarah\PycharmProjects\Planet-Recognition\Test Images'
