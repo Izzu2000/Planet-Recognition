@@ -108,6 +108,7 @@ def create_or_load_model(objects, **settings):
             loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
             metrics=['accuracy']
         )
+        # Saving model
         path = 'training_history'
         settings.update(save_key(TRAINING_PATH_KEY, path))
         return model
