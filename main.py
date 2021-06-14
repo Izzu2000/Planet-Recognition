@@ -225,8 +225,8 @@ if __name__ == '__main__':
     # data_train(training_path, epochs=2)
 
     # Do this if you wanna check every test data there are
-    # root = r'C:\Users\sarah\PycharmProjects\Planet-Recognition\Test Images'
-    # test_folder_data(root)
+    root = r'C:\Users\sarah\PycharmProjects\Planet-Recognition\Test Images'
+    test_folder_data(root)
 
     # # Do this if you want to test 1 data
     path = r"C:\Users\sarah\PycharmProjects\Planet-Recognition\Test Images\Earth 2.jpg"
