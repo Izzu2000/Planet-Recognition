@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import filedialog
 from tkinter.ttk import Notebook
+import threading
 import json
 import contextlib
 import numpy as np
@@ -27,8 +28,13 @@ class ConsoleWritter(io.IOBase):
         self.obj = obj
 
     def write(self, arg):
+        # Handle text everytime stdout receives a write call
         text = self.obj
         text.configure(state='normal')
+        # \r indicates to update the text rather than adding new textline
+        if arg and arg[0] == '\r':
+            text.delete('current linestart', 'current lineend+1c')
+            text.insert('end', '\n')
         text.insert('end', arg)
         text.see("end")
         text.configure(state='disabled')
@@ -281,7 +287,8 @@ def load_training_GUI(tab_layout, **settings):
         elif save_path is None:
             print("Saving Path is not selected. Please select a path.")
         else:
-            data_train(planet_path)
+            thread = threading.Thread(target=data_train, args=(planet_path,))
+            thread.start()
 
     # Create buttons
     place = create_button_image(
