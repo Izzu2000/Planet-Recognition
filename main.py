@@ -12,6 +12,8 @@ import sys
 from PIL import Image, ImageTk
 from tensorflow import keras
 from tensorflow.keras import layers, models
+from tensorflow.python.keras.preprocessing import dataset_utils
+from tensorflow.python.keras.preprocessing.image_dataset import ALLOWLIST_FORMATS
 
 # Constants
 SETTINGS_PATH = 'settings.json'
@@ -271,6 +273,12 @@ def load_training_GUI(tab_layout, **settings):
         nonlocal planet_path
         planet_path = filedialog.askdirectory(initialdir=planet_path)
         print("Training Path:", planet_path)
+
+        def find_classes():
+            # shows expected class_name
+            _, _, class_names = dataset_utils.index_directory(planet_path, 'inferred', ALLOWLIST_FORMATS)
+            print("Classes found:", ", ".join(class_names))
+        threading.Thread(target=find_classes).start()
         settings.update(save_key(PLANET_PATH_KEY, planet_path))
 
     # When save folder button is clicked
