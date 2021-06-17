@@ -42,6 +42,17 @@ class ConsoleWritter(io.IOBase):
         text.configure(state='disabled')
 
 
+def run_in_thread(func):
+    """Run the decorated function in a thread, and directly run when blocking is set to True"""
+    def runner(*args, blocking=False, **kwargs):
+        if not blocking:
+            thread = threading.Thread(target=func, args=args, kwargs=kwargs)
+            thread.start()
+            return thread
+        return func(*args, **kwargs)
+    return runner
+
+
 def save(data):
     with open(SETTINGS_PATH, 'w+') as j:
         json.dump(data, j, indent=4)
@@ -142,6 +153,7 @@ def create_or_load_model(objects, **settings):
     return keras.models.load_model(path)
 
 
+@run_in_thread
 def data_train(planet_path, epochs=200):
     BATCH_SIZE = 5
     # gets all the images from a root folder, Planet -> Jupiter, Mars, ...
@@ -274,11 +286,12 @@ def load_training_GUI(tab_layout, **settings):
         planet_path = filedialog.askdirectory(initialdir=planet_path)
         print("Training Path:", planet_path)
 
+        @run_in_thread
         def find_classes():
             # shows expected class_name
             _, _, class_names = dataset_utils.index_directory(planet_path, 'inferred', ALLOWLIST_FORMATS)
             print("Classes found:", ", ".join(class_names))
-        threading.Thread(target=find_classes).start()
+        find_classes()
         settings.update(save_key(PLANET_PATH_KEY, planet_path))
 
     # When save folder button is clicked
@@ -295,8 +308,7 @@ def load_training_GUI(tab_layout, **settings):
         elif save_path is None:
             print("Saving Path is not selected. Please select a path.")
         else:
-            thread = threading.Thread(target=data_train, args=(planet_path,))
-            thread.start()
+            data_train(planet_path)
 
     # Create buttons
     place = create_button_image(
@@ -360,7 +372,6 @@ if __name__ == '__main__':
     # training_path = r"C:\Users\sarah\PycharmProjects\Planet-Recognition\Planet"
     # # Train the model
     # data_train(r"C:\Users\sarah\PycharmProjects\Planet-Recognition\Planet", epochs=2)
-
     # # Do this if you wanna check every test data there are
     # root = r'C:\Users\sarah\PycharmProjects\Planet-Recognition\Test Images'
     # test_folder_data(root)
