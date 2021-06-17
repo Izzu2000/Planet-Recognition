@@ -288,7 +288,7 @@ def load_training_GUI(tab_layout, **settings):
 
         @run_in_thread
         def find_classes():
-            # shows expected class_name
+            # shows expected class_name, this may be blocking heavily
             _, _, class_names = dataset_utils.index_directory(planet_path, 'inferred', ALLOWLIST_FORMATS)
             print("Classes found:", ", ".join(class_names))
         find_classes()
