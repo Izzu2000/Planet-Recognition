@@ -5,6 +5,7 @@ import io
 import sys
 import ai_model
 from ai_model import BACKGROUND_HEX, PLANET_PATH_KEY, TRAINING_PATH_KEY
+from collections import namedtuple
 from PIL import Image, ImageTk
 from tensorflow.python.keras.preprocessing import dataset_utils
 from tensorflow.python.keras.preprocessing.image_dataset import ALLOWLIST_FORMATS
@@ -26,6 +27,9 @@ class ConsoleWritter(io.IOBase):
         text.insert('end', arg)
         text.see("end")
         text.configure(state='disabled')
+
+
+ImageButton = namedtuple("ImageButton", "button place")
 
 
 def create_button_image(window, *, image, title, description=None, padx=7, text_size=11, **kwargs):
@@ -50,7 +54,7 @@ def create_button_image(window, *, image, title, description=None, padx=7, text_
         button.image = photo
         button.config(image=photo, compound=tk.LEFT)
     button.pack()
-    return button_border
+    return ImageButton(button, button_border)
 
 
 def load_recognition_gui(tab_layout, settings):
@@ -99,16 +103,19 @@ def load_training_gui(tab_layout, settings):
         settings.update(ai_model.save_key(TRAINING_PATH_KEY, save_path))
 
     # When running folder button is clicked
+    @ai_model.run_in_thread
     def running_train():
         if planet_path is None:
             print("Planets path folder is not selected. Please select a path.")
         elif save_path is None:
             print("Saving Path is not selected. Please select a path.")
         else:
-            ai_model.data_train(planet_path)
+            start_but.button["state"] = "disabled"
+            ai_model.data_train(planet_path, settings, epochs=2, blocking=True)
+            start_but.button["state"] = "normal"
 
     # Create buttons
-    place = create_button_image(
+    planet_but = create_button_image(
         tab_training,
         image=r'Resources\Folder_Icon.png',
         title="Planets",
@@ -116,9 +123,9 @@ def load_training_gui(tab_layout, settings):
         bg='#dfdfdf',
         command=training_folder
     )
-    place.grid(row=1, column=0, **padding)
+    planet_but.place.grid(row=1, column=0, **padding)
 
-    place = create_button_image(
+    save_but = create_button_image(
         tab_training,
         image=r'Resources\Folder_Icon.png',
         title="Save Model",
@@ -126,9 +133,9 @@ def load_training_gui(tab_layout, settings):
         bg='#dfdfdf',
         command=save_path_folder
     )
-    place.grid(row=1, column=1, **padding)
+    save_but.place.grid(row=1, column=1, **padding)
     text_box.grid(row=2, column=0, columnspan=2, **padding)
-    place = create_button_image(
+    start_but = create_button_image(
         tab_training,
         text_size=10,
         image=r'Resources\Start_icon.png',
@@ -136,7 +143,7 @@ def load_training_gui(tab_layout, settings):
         bg='#dfdfdf',
         command=running_train
     )
-    place.grid(row=3, column=1, sticky='e', **padding)
+    start_but.place.grid(row=3, column=1, sticky='e', **padding)
     return tab_training
 
 
