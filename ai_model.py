@@ -49,60 +49,58 @@ def run_in_thread(func):
     return runner
 
 
-def create_or_load_model(objects, settings):
-    if not (path := settings.get(TRAINING_PATH_KEY)):
-        ACTIVATION_FUNC = 'relu'
+def create_model(objects, settings):
+    ACTIVATION_FUNC = 'relu'
 
-        # Input shape is (IMAGE_HEIGHT, IMAGE_WIDTH, 3)
-        # - reduce computational time if image size is lower
-        # - introduces the same resolution for all images input
-        # 3 refers to the channels
+    # Input shape is (IMAGE_HEIGHT, IMAGE_WIDTH, 3)
+    # - reduce computational time if image size is lower
+    # - introduces the same resolution for all images input
+    # 3 refers to the channels
 
-        # Using max pooling
-        # - to focus on the planet itself
-        # - ignore the dark background of space
+    # Using max pooling
+    # - to focus on the planet itself
+    # - ignore the dark background of space
 
-        # activation: relu
-        # - to extract feature from planets
+    # activation: relu
+    # - to extract feature from planets
 
-        # Flatten is the conversion to be inputted into the node
+    # Flatten is the conversion to be inputted into the node
 
-        # it contain 128 nodes
-        # Final dense is for the 5 objects classified
-        model = models.Sequential([
-            layers.experimental.preprocessing.Rescaling(1. / 255, input_shape=(IMAGE_HEIGHT, IMAGE_WIDTH, 3)),
-            layers.Conv2D(16, 3, padding='same', activation=ACTIVATION_FUNC),
-            layers.MaxPooling2D(),
-            layers.Conv2D(32, 3, padding='same', activation=ACTIVATION_FUNC),
-            layers.MaxPooling2D(),
-            layers.Conv2D(64, 3, padding='same', activation=ACTIVATION_FUNC),
-            layers.MaxPooling2D(),
-            layers.Flatten(),
-            layers.Dense(128, activation=ACTIVATION_FUNC),
-            layers.Dense(objects)
-        ])
+    # it contain 128 nodes
+    # Final dense is for the 5 objects classified
+    model = models.Sequential([
+        layers.experimental.preprocessing.Rescaling(1. / 255, input_shape=(IMAGE_HEIGHT, IMAGE_WIDTH, 3)),
+        layers.Conv2D(16, 3, padding='same', activation=ACTIVATION_FUNC),
+        layers.MaxPooling2D(),
+        layers.Conv2D(32, 3, padding='same', activation=ACTIVATION_FUNC),
+        layers.MaxPooling2D(),
+        layers.Conv2D(64, 3, padding='same', activation=ACTIVATION_FUNC),
+        layers.MaxPooling2D(),
+        layers.Flatten(),
+        layers.Dense(128, activation=ACTIVATION_FUNC),
+        layers.Dense(objects)
+    ])
 
-        # Adam is the best among the adaptive optimizers for most cases
-        # -combinations of Adadelta and RMSprop, recommended to use adam for most cases
+    # Adam is the best among the adaptive optimizers for most cases
+    # -combinations of Adadelta and RMSprop, recommended to use adam for most cases
 
-        # SparseCategoricalCrossentropy pretty much does computes the loss
+    # SparseCategoricalCrossentropy pretty much does computes the loss
 
-        # metrics just shows our accuracy
-        model.compile(
-            optimizer='adam',
-            loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
-            metrics=['accuracy']
-        )
-        # Saving model
+    # metrics just shows our accuracy
+    model.compile(
+        optimizer='adam',
+        loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+        metrics=['accuracy']
+    )
+    # Saving model
+    if settings.get(TRAINING_PATH_KEY) is None:
         path = 'training_history'
         settings.update(save_key(TRAINING_PATH_KEY, path))
-        return model
-
-    return keras.models.load_model(path)
+    return model
 
 
 @run_in_thread
-def data_train(planet_path, epochs=200):
+def data_train(planet_path, settings, epochs=200):
     BATCH_SIZE = 5
     # gets all the images from a root folder, Planet -> Jupiter, Mars, ...
     train_ds = tf.keras.preprocessing.image_dataset_from_directory(
@@ -135,8 +133,8 @@ def data_train(planet_path, epochs=200):
 
     train_ds.map(func)
 
-    # Get/create model
-    model = create_or_load_model(len(train_ds.class_names), settings)
+    # Create model
+    model = create_model(len(train_ds.class_names), settings)
 
     # trains it with whatever epoch given
     model.fit(train_ds, validation_data=valid_ds, epochs=epochs)
