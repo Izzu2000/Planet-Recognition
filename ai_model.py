@@ -120,7 +120,7 @@ def data_train(planet_path, settings, epochs=200):
         batch_size=BATCH_SIZE
     )
 
-    settings = save_key(CLASS_KEY, train_ds.class_names)
+    settings.update(save_key(CLASS_KEY, train_ds.class_names))
 
     print("Identified Classes:", ", ".join(train_ds.class_names))
     # Normalization
