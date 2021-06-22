@@ -16,7 +16,7 @@ from tensorflow.python.keras.preprocessing import dataset_utils
 from tensorflow.python.keras.preprocessing.image_dataset import ALLOWLIST_FORMATS
 
 # Constants
-# HI EVERYTHING
+# hello
 SETTINGS_PATH = 'settings.json'
 PLANET_PATH_KEY = "planet_folder_path"
 TRAINING_PATH_KEY = 'training_history_path'
