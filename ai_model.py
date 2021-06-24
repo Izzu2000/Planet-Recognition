@@ -170,8 +170,6 @@ def test_data(path, label, data):
     # np.max gets the highest value of the list
     predicted = classes[np.argmax(score)]
     score = 100 * np.max(score)
-    print("Predicted Planet:", predicted, score)
-    print("Actual Planet:", label)
     return predicted, score, label
 
 
