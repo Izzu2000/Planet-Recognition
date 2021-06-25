@@ -1,10 +1,11 @@
 import tkinter as tk
 from tkinter import filedialog
 from tkinter.ttk import Notebook
+import time
 import io
 import sys
 import ai_model
-from ai_model import BACKGROUND_HEX, PLANET_PATH_KEY, TRAINING_PATH_KEY
+from ai_model import BACKGROUND_HEX, PLANET_PATH_KEY, TRAINING_PATH_KEY, RECOGNITION_PATH_KEY
 from collections import namedtuple
 from PIL import Image, ImageTk
 from tensorflow.python.keras.preprocessing import dataset_utils
@@ -57,72 +58,109 @@ def create_button_image(window, *, image, title, description=None, padx=7, text_
     return ImageButton(button, button_border)
 
 
-def fit_center_calculation(canvas, img_loaded, maxw, maxh):
-    maxw
-    w, h = img_loaded.size
-    wscale = maxw / w
-    hscale = maxh / h
-    cw, ch = maxw / 2, maxh / 2
-    scale = min(wscale, hscale)
-    size = [int(x * scale) for x in (w, h)]
-    resized = img_loaded.resize(size)
-    photo = ImageTk.PhotoImage(resized)
-    canvas.create_image(cw, ch, image=photo, anchor='center')
-    canvas.image = photo
+def new_path(button, path):
+    text = button['text'].splitlines()
+    if len(text) < 3:
+        text.append(path)
+    else:
+        text[2] = path
+
+    button['text'] = "\n".join(text)
 
 
 def load_recognition_gui(tab_layout, settings):
     """Recognition Tab GUI"""
     padding = {'padx': 7, 'pady': 7}
     tab_recognition = tk.Frame(tab_layout, bg=BACKGROUND_HEX)
-    save_path = settings.get(TRAINING_PATH_KEY)
+    tab_recognition.grid_columnconfigure(0, weight=1)
 
     # When save folder button is clicked
     def save_path_folder():
         nonlocal save_path
-        save_path = filedialog.askdirectory(initialdir=save_path)
+        if not (asked := filedialog.askdirectory(initialdir=save_path, title="Select AI Model Folder")):
+            return
+        save_path = asked
         print("Save Path:", save_path)
-        settings.update(ai_model.save_key(TRAINING_PATH_KEY, save_path))
+        new_path(save_but.button, save_path)
+        settings.update(ai_model.save_key(RECOGNITION_PATH_KEY, save_path))
+        recog_but.button['state'] = 'normal'
+    max_size = 620, 400
 
-    maxw, maxh = 620, 400
+    def fit_center_calculation(img):
+        """Put the loaded image into the canvas at fit it to the center"""
+        nonlocal canvas
+        old_size = img.size
+        scales = [x / y for x, y in zip(max_size, old_size)]
+        middle_position = [x / 2 for x in max_size]
+        scale = min(scales)
+        size = [int(x * scale) for x in old_size]
+        resized = img.resize(size)
+        photo = ImageTk.PhotoImage(resized)
+        canvas.create_image(*middle_position, image=photo, anchor='center')
+        canvas.image = photo
 
     @ai_model.run_in_thread
     def recognise_path():
+        """Function is triggered when a user click on recognition button"""
         nonlocal canvas
-        recog_path = filedialog.askopenfile()
+        started = True
+        if (recog_path := filedialog.askopenfile(title="Select Planet Image")) is None:
+            return
+
+        @ai_model.run_in_thread
+        def text_change():
+            while True:
+                for x in range(3):
+                    if not started:
+                        return
+                    text = f'Predicting' + ("." * (x + 1))
+                    actual_prediction["text"] = text
+                    actual_confidence["text"] = text
+                    time.sleep(1)
+
+        recog_but.button['state'] = 'disabled'
+        text_change()
+        new_path(recog_but.button, recog_path.name)
         pg.start()
         with Image.open(recog_path.name) as img_loaded:
             canvas.config(bg='black')
-            fit_center_calculation(canvas, img_loaded, maxw, maxh)
-        predicted, score, _ = ai_model.test_single_data(recog_path.name, settings)
+            fit_center_calculation(img_loaded)
+        predicted, score, _ = ai_model.predict_single_data(recog_path.name, settings)
+        started = False
         actual_prediction["text"] = predicted
         actual_confidence["text"] = f"{score:.2f}%"
         pg.stop()
+        recog_but.button['state'] = 'normal'
 
-    predict_box = tk.Frame(tab_recognition, bg="#707070")
-    label_prediction = tk.Label(predict_box, text="Prediction", font=('Arial', 13, 'bold'), fg="#ffffff", bg="#707070")
-    label_prediction.grid(row=0, column=0, sticky='nw', padx=7, pady=7)
-    actual_prediction = tk.Label(predict_box, text="NA", font=('Arial', 25, 'bold'), fg="#04fd99", bg="#707070")
-    actual_prediction.grid(row=1, column=0, padx=7, pady=7)
+    FRAME_BACKGROUND = "#707070"
+    
+    title_frame = dict(font=('Arial', 13, 'bold'), fg="#ffffff", bg=FRAME_BACKGROUND)
+    desc_text = dict(font=('Arial', 25, 'bold'), bg=FRAME_BACKGROUND, text="NA")
+    predict_box = tk.Frame(tab_recognition, bg=FRAME_BACKGROUND)
+    label_prediction = tk.Label(predict_box, text="Prediction", **title_frame)
+    label_prediction.grid(row=0, column=0, sticky='nw', **padding)
+    actual_prediction = tk.Label(predict_box, fg="#04fd99", **desc_text)
+    actual_prediction.grid(row=1, column=0, sticky='nw', **padding)
     predict_box.grid(row=1, column=3, sticky="ew", **padding)
 
-    confidence_box = tk.Frame(tab_recognition, bg="#707070")
-    label_confidence = tk.Label(confidence_box, text="Confidence Level", font=('Arial', 14, 'bold'), fg="#ffffff", bg="#707070")
-    label_confidence.grid(row=0, column=0, padx=7, pady=7)
-    actual_confidence = tk.Label(confidence_box, text="NA", font=('Arial', 25, 'bold'), fg="#ffffff", bg="#707070")
-    actual_confidence.grid(row=2, column=0, padx=7, pady=7, sticky='nw')
+    confidence_box = tk.Frame(tab_recognition, bg=FRAME_BACKGROUND)
+    label_confidence = tk.Label(confidence_box, text="Confidence Level", **title_frame)
+    label_confidence.grid(row=0, column=0, sticky='nw', **padding)
+    actual_confidence = tk.Label(confidence_box, fg="#ffffff", **desc_text)
+    actual_confidence.grid(row=2, column=0, sticky='nw', **padding)
     confidence_box.grid(row=2, column=3, sticky="ew", **padding)
 
     pg = tk.ttk.Progressbar(tab_recognition)
     pg.grid(row=3, column=3, sticky="ew", **padding)
 
-    canvas = tk.Canvas(tab_recognition, width=maxw, height=maxh)
+    w, h = max_size
+    canvas = tk.Canvas(tab_recognition, width=w, height=h)
     with Image.open('Resources/Default_image.png') as img_loaded:
-        fit_center_calculation(canvas, img_loaded, maxw, maxh)
+        fit_center_calculation(img_loaded)
     canvas.grid(row=1, column=0, rowspan=4, columnspan=3, **padding)
     recog_but = create_button_image(
         tab_recognition,
-        image=r'Resources\Folder_Icon.png',
+        image=r'Resources\Image_icon.png',
         title="Select Image",
         description="Select an image path that you want to ",
         bg='#dfdfdf',
@@ -137,6 +175,10 @@ def load_recognition_gui(tab_layout, settings):
         bg='#dfdfdf',
         command=save_path_folder
     )
+    recog_but.button['state'] = 'disabled'
+    if save_path := settings.get(RECOGNITION_PATH_KEY):
+        new_path(save_but.button, save_path)
+        recog_but.button['state'] = 'normal'
     recog_but.place.grid(row=0, column=0, columnspan=2, sticky="ew", **padding)
     save_but.place.grid(row=0, column=2, columnspan=2, sticky="ew", **padding)
     tab_recognition.pack(fill='both')
@@ -152,15 +194,14 @@ def load_training_gui(tab_layout, settings):
 
     text_box = tk.Text(tab_training)
     sys.stdout = ConsoleWritter(text_box)
-    if planet_path := settings.get(PLANET_PATH_KEY):
-        print("Training Path:", planet_path)
-    if save_path := settings.get(TRAINING_PATH_KEY):
-        print("Save Path:", save_path)
 
     # When training folder button is clicked
     def training_folder():
         nonlocal planet_path
-        planet_path = filedialog.askdirectory(initialdir=planet_path)
+        if not (asked_path := filedialog.askdirectory(initialdir=planet_path, title="Select Planet Images Folder")):
+            return
+        planet_path = asked_path
+        new_path(planet_but.button, asked_path)
         print("Training Path:", planet_path)
 
         @ai_model.run_in_thread
@@ -174,7 +215,10 @@ def load_training_gui(tab_layout, settings):
     # When save folder button is clicked
     def save_path_folder():
         nonlocal save_path
-        save_path = filedialog.askdirectory(initialdir=save_path)
+        if not (asked := filedialog.askdirectory(initialdir=save_path, title="Select Folder to Save Model")):
+            return
+        new_path(save_but.button, asked)
+        save_path = asked
         print("Save Path:", save_path)
         settings.update(ai_model.save_key(TRAINING_PATH_KEY, save_path))
 
@@ -209,6 +253,12 @@ def load_training_gui(tab_layout, settings):
         bg='#dfdfdf',
         command=save_path_folder
     )
+    if planet_path := settings.get(PLANET_PATH_KEY):
+        print("Training Path:", planet_path)
+        new_path(planet_but.button, planet_path)
+    if save_path := settings.get(TRAINING_PATH_KEY):
+        print("Save Path:", save_path)
+        new_path(save_but.button, save_path)
     save_but.place.grid(row=0, column=0, columnspan=1, sticky='nesw', **padding)
     text_box.grid(row=1, column=0, columnspan=2, sticky='nesw', **padding)
     start_but = create_button_image(
@@ -249,14 +299,3 @@ def load_gui(options):
 if __name__ == '__main__':
     loaded_settings = ai_model.load_settings()
     load_gui(loaded_settings)
-    # Asks for training path
-    # training_path = r"C:\Users\sarah\PycharmProjects\Planet-Recognition\Planet"
-    # # Train the model
-    # data_train(r"C:\Users\sarah\PycharmProjects\Planet-Recognition\Planet", epochs=2)
-    # # Do this if you wanna check every test data there are
-    # root = r'C:\Users\sarah\PycharmProjects\Planet-Recognition\Test Images'
-    # test_folder_data(root)
-    #
-    # # # Do this if you want to test 1 data
-    # path = r"C:\Users\sarah\PycharmProjects\Planet-Recognition\Test Images\Earth 2.jpg"
-    # test_single_data(path)

@@ -10,6 +10,7 @@ from tensorflow.keras import layers, models
 SETTINGS_PATH = 'settings.json'
 PLANET_PATH_KEY = "planet_folder_path"
 TRAINING_PATH_KEY = 'training_history_path'
+RECOGNITION_PATH_KEY = 'recognition_history_path'
 CLASS_KEY = 'classes_saved'
 BACKGROUND_HEX = '#acacac'
 IMAGE_WIDTH, IMAGE_HEIGHT = 700, 700
@@ -145,7 +146,7 @@ def data_train(planet_path, settings, epochs=200):
     model.save(path)
 
 
-def test_data(path, label, data):
+def predict_data(path, label, data):
     # Loads the image, and resize to the target_size
     img = keras.preprocessing.image.load_img(
         path, target_size=(IMAGE_HEIGHT, IMAGE_WIDTH)
@@ -159,7 +160,7 @@ def test_data(path, label, data):
     img_array = tf.expand_dims(img_array, 0)
 
     # gets the saved model, predict and get the score
-    model = keras.models.load_model(data.get(TRAINING_PATH_KEY))
+    model = keras.models.load_model(data.get(RECOGNITION_PATH_KEY))
     predictions = model.predict(img_array)
     # returns a list of scores for all 5 nodes
     score = tf.nn.softmax(predictions[0])
@@ -173,9 +174,9 @@ def test_data(path, label, data):
     return predicted, score, label
 
 
-def test_single_data(path, settings):
+def predict_single_data(path, settings):
     path = path.replace("/", "\\")
     x = path.split('\\')[-1]
     y = x.split()[0]
     z = y.split('.')[0]
-    return test_data(path, z.capitalize(), settings)
+    return predict_data(path, z.capitalize(), settings)
