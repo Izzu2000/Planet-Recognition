@@ -197,6 +197,7 @@ def load_recognition_gui(tab_layout, settings):
 def load_training_gui(tab_layout, settings):
     """Training Tab GUI"""
     padding = {'padx': 7, 'pady': 7}
+    scale_var = tk.IntVar()
     tab_training = tk.Frame(tab_layout, bg=BACKGROUND_HEX)
     tab_training.grid_columnconfigure(0, weight=1)
     tab_training.grid_rowconfigure(0, weight=1)
@@ -240,7 +241,9 @@ def load_training_gui(tab_layout, settings):
             print("Saving Path is not selected. Please select a path.")
         else:
             start_but.button["state"] = "disabled"
-            ai_model.data_train(planet_path, settings, epochs=2, blocking=True)
+
+            print("Epochs set", (epoch := scale_var.get()))
+            ai_model.data_train(planet_path, settings, epochs=epoch, blocking=True)
             start_but.button["state"] = "normal"
 
     # Create buttons
@@ -269,7 +272,7 @@ def load_training_gui(tab_layout, settings):
         print("Save Path:", save_path)
         new_path(save_but.button, save_path)
     save_but.place.grid(row=0, column=0, columnspan=1, sticky='nesw', **padding)
-    text_box.grid(row=1, column=0, columnspan=2, sticky='nesw', **padding)
+    text_box.grid(row=2, column=0, columnspan=2, sticky='nesw', **padding)
     start_but = create_button_image(
         tab_training,
         text_size=10,
@@ -278,7 +281,21 @@ def load_training_gui(tab_layout, settings):
         bg='#dfdfdf',
         command=running_train
     )
-    start_but.place.grid(row=2, column=1, sticky='e', **padding)
+    start_but.place.grid(row=3, column=1, sticky='e', **padding)
+    scale_setting = dict(
+        label="Epochs",
+        from_=1,
+        to=1001,
+        tickinterval=100,
+        bg='#dfdfdf',
+        orient=tk.HORIZONTAL,
+        bd=2,
+        highlightbackground="#858585",
+        variable=scale_var
+    )
+    scale_var.set(200)
+    epoch_scale = tk.Scale(tab_training, **scale_setting)
+    epoch_scale.grid(row=1, column=0, columnspan=2, sticky='nesw', **padding)
     tab_training.pack(fill='both')
     return tab_training
 
