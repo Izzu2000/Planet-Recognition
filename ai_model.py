@@ -148,10 +148,12 @@ def data_train(planet_path, settings, epochs=200):
 
 def predict_data(path, label, data):
     # Loads the image, and resize to the target_size
-    img = keras.preprocessing.image.load_img(
-        path, target_size=(IMAGE_HEIGHT, IMAGE_WIDTH)
-    )
-
+    try:
+        img = keras.preprocessing.image.load_img(
+            path, target_size=(IMAGE_HEIGHT, IMAGE_WIDTH)
+        )
+    except OSError:
+        raise Exception("Image selected does not exist")
     # converts PIL image into numpy array
     # image -> [[r, g, b], ..., [r, g, b]] array
     img_array = keras.preprocessing.image.img_to_array(img)
@@ -159,8 +161,12 @@ def predict_data(path, label, data):
     # [r, g, b] -> [a, r, g, b]
     img_array = tf.expand_dims(img_array, 0)
 
-    # gets the saved model, predict and get the score
-    model = keras.models.load_model(data.get(RECOGNITION_PATH_KEY))
+    try:
+        # gets the saved model, predict and get the score
+        model = keras.models.load_model(data.get(RECOGNITION_PATH_KEY))
+    except OSError:
+        raise Exception("Model selected is either corrupt or does not exist.")
+
     predictions = model.predict(img_array)
     # returns a list of scores for all 5 nodes
     score = tf.nn.softmax(predictions[0])

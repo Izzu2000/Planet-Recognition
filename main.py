@@ -1,4 +1,5 @@
 import tkinter as tk
+import tkinter.messagebox
 from tkinter import filedialog
 from tkinter.ttk import Notebook
 import time
@@ -122,13 +123,19 @@ def load_recognition_gui(tab_layout, settings):
         text_change()
         new_path(recog_but.button, recog_path.name)
         pg.start()
-        with Image.open(recog_path.name) as img_loaded:
-            canvas.config(bg='black')
-            fit_center_calculation(img_loaded)
-        predicted, score, _ = ai_model.predict_single_data(recog_path.name, settings)
+        try:
+            with Image.open(recog_path.name) as img_loaded:
+                canvas.config(bg='black')
+                fit_center_calculation(img_loaded)
+            predicted, score, _ = ai_model.predict_single_data(recog_path.name, settings)
+            actual_prediction["text"] = predicted
+            actual_confidence["text"] = f"{score:.2f}%"
+        except Exception as e:
+            tkinter.messagebox.showerror(title="Error on prediction.", message=str(e))
+            actual_prediction["text"] = "NA"
+            actual_confidence["text"] = "NA"
+
         started = False
-        actual_prediction["text"] = predicted
-        actual_confidence["text"] = f"{score:.2f}%"
         pg.stop()
         recog_but.button['state'] = 'normal'
 
