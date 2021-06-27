@@ -114,7 +114,7 @@ def load_recognition_gui(tab_layout, settings):
                 for x in range(3):
                     if not started:
                         return
-                    text = f'Predicting' + ("." * (x + 1))
+                    text = 'Predicting' + ("." * (x + 1))
                     actual_prediction["text"] = text
                     actual_confidence["text"] = text
                     time.sleep(1)
@@ -127,10 +127,12 @@ def load_recognition_gui(tab_layout, settings):
             with Image.open(recog_path.name) as img_loaded:
                 canvas.config(bg='black')
                 fit_center_calculation(img_loaded)
+            # Where actual prediction starts
             predicted, score, _ = ai_model.predict_single_data(recog_path.name, settings)
             actual_prediction["text"] = predicted
             actual_confidence["text"] = f"{score:.2f}%"
         except Exception as e:
+            # When error, show an error message and stop the prediction
             tkinter.messagebox.showerror(title="Error on prediction.", message=str(e))
             actual_prediction["text"] = "NA"
             actual_confidence["text"] = "NA"
