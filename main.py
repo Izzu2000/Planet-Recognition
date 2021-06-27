@@ -31,8 +31,6 @@ class ConsoleWritter(io.IOBase):
         text.configure(state='disabled')
 
 
-#test
-
 ImageButton = namedtuple("ImageButton", "button place")
 
 
