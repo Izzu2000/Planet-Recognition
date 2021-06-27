@@ -97,6 +97,7 @@ def create_model(objects, settings):
     if settings.get(TRAINING_PATH_KEY) is None:
         path = 'training_history'
         settings.update(save_key(TRAINING_PATH_KEY, path))
+    model.summary()
     return model
 
 
