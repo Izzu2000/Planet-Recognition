@@ -150,23 +150,23 @@ def load_recognition_gui(tab_layout, settings):
     label_prediction.grid(row=0, column=0, sticky='nw', **padding)
     actual_prediction = tk.Label(predict_box, fg="#04fd99", **desc_text)
     actual_prediction.grid(row=1, column=0, sticky='nw', **padding)
-    predict_box.grid(row=1, column=3, sticky="ew", **padding)
+    predict_box.grid(row=1, column=2, columnspan=2, sticky="ew", **padding)
 
     confidence_box = tk.Frame(tab_recognition, bg=FRAME_BACKGROUND)
     label_confidence = tk.Label(confidence_box, text="Confidence Level", **title_frame)
     label_confidence.grid(row=0, column=0, sticky='nw', **padding)
     actual_confidence = tk.Label(confidence_box, fg="#ffffff", **desc_text)
     actual_confidence.grid(row=2, column=0, sticky='nw', **padding)
-    confidence_box.grid(row=2, column=3, sticky="ew", **padding)
+    confidence_box.grid(row=2, column=2, columnspan=2, sticky="ew", **padding)
 
     pg = tk.ttk.Progressbar(tab_recognition)
-    pg.grid(row=3, column=3, sticky="ew", **padding)
+    pg.grid(row=4, column=0, columnspan=4, sticky="ew", **padding)
 
     w, h = max_size
     canvas = tk.Canvas(tab_recognition, width=w, height=h)
     with Image.open('Resources/Default_image.png') as img_loaded:
         fit_center_calculation(img_loaded)
-    canvas.grid(row=1, column=0, rowspan=4, columnspan=3, **padding)
+    canvas.grid(row=1, column=0, rowspan=3, columnspan=2, **padding)
     recog_but = create_button_image(
         tab_recognition,
         image=r'Resources\Image_icon.png',
