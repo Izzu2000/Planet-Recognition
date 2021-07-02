@@ -51,7 +51,6 @@ def run_in_thread(func):
 
 
 def create_model(objects, settings):
-    ACTIVATION_FUNC = 'relu'
 
     # Input shape is (IMAGE_HEIGHT, IMAGE_WIDTH, 3)
     # - reduce computational time if image size is lower
@@ -69,13 +68,21 @@ def create_model(objects, settings):
 
     # it contain 128 nodes
     # Final dense is for the 5 objects classified
+
+    ACTIVATION_FUNC = 'relu'
+
+    def create_conv2D(node):
+        width_height = 3
+        return layers.Conv2D(node, width_height, padding='same', activation=ACTIVATION_FUNC)
+
+    shape = IMAGE_HEIGHT, IMAGE_WIDTH, 3
     model = models.Sequential([
-        layers.experimental.preprocessing.Rescaling(1. / 255, input_shape=(IMAGE_HEIGHT, IMAGE_WIDTH, 3)),
-        layers.Conv2D(16, 3, padding='same', activation=ACTIVATION_FUNC),
+        layers.experimental.preprocessing.Rescaling(1. / 255, input_shape=shape),
+        create_conv2D(16),
         layers.MaxPooling2D(),
-        layers.Conv2D(32, 3, padding='same', activation=ACTIVATION_FUNC),
+        create_conv2D(32),
         layers.MaxPooling2D(),
-        layers.Conv2D(64, 3, padding='same', activation=ACTIVATION_FUNC),
+        create_conv2D(64),
         layers.MaxPooling2D(),
         layers.Flatten(),
         layers.Dense(128, activation=ACTIVATION_FUNC),
@@ -125,16 +132,6 @@ def data_train(planet_path, settings, epochs=200):
     settings.update(save_key(CLASS_KEY, train_ds.class_names))
 
     print("Identified Classes:", ", ".join(train_ds.class_names))
-    # Normalization
-    # changes from [0, 255] into [0, 1] ranges,
-    normalization_layer = layers.experimental.preprocessing.Rescaling(1. / 255)
-
-    def func(x, y):
-        print("Normalizing")
-        return normalization_layer(x), y
-
-    train_ds.map(func)
-
     # Create model
     model = create_model(len(train_ds.class_names), settings)
 
