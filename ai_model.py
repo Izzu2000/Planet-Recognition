@@ -1,6 +1,8 @@
 import threading
 import numpy as np
 import json
+import os
+import sys
 import contextlib
 import tensorflow as tf
 from tensorflow import keras
@@ -142,6 +144,7 @@ def data_train(planet_path, settings, epochs=200):
     print("Saving data to", path)
     # saves the model
     model.save(path)
+    root_func()
 
 
 def predict_data(path, label, data):
@@ -184,3 +187,31 @@ def predict_single_data(path, settings):
     y = x.split()[0]
     z = y.split('.')[0]
     return predict_data(path, z.capitalize(), settings)
+
+
+def root_func():
+    """Run this function if you want to do some analysis on the model"""
+    settings = {PLANET_PATH_KEY: r"C:\Users\sarah\PycharmProjects\Planet-Recognition\Planet",
+                RECOGNITION_PATH_KEY: r"C:\Users\sarah\PycharmProjects\training_history",
+                CLASS_KEY: ["Earth", "Jupiter", "Mars", "Saturn", "Uranus"]
+                }
+    predictions = {}
+    root = r"C:\Users\sarah\PycharmProjects\Planet-Recognition\Test Images"
+    overall = 0
+    print("starting")
+    for i, x in enumerate(os.listdir(root)):
+        sys.stdout.write(f"\rProgress {i + 1} / 15")
+        predicted, score, label = predict_single_data(rf"{root}\{x}", settings)
+        labels = predictions.setdefault(label, [])
+        labels.append((predicted, score, x))
+        overall += predicted == label
+    scores = 0
+    for x, y in predictions.items():
+        print("\nLabel:", x)
+        for predicted, score, file in y:
+            scores += score
+            print("\tFile:", file, "\tPredicted:", predicted, f"\tScore:{score:.4f}")
+    print("Correct Prediction:", overall / 15 * 100)
+    print("Overall Confidence Level:", scores / 1500 * 100)
+
+
