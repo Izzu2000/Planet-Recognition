@@ -6,7 +6,8 @@ import time
 import io
 import sys
 import ai_model
-from ai_model import BACKGROUND_HEX, PLANET_PATH_KEY, TRAINING_PATH_KEY, RECOGNITION_PATH_KEY
+from typing import Any, Union, Optional
+from ai_model import BACKGROUND_HEX, PLANET_PATH_KEY, TRAINING_PATH_KEY, RECOGNITION_PATH_KEY, _setting_type
 from collections import namedtuple
 from PIL import Image, ImageTk
 from tensorflow.python.keras.preprocessing import dataset_utils
@@ -34,7 +35,9 @@ class ConsoleWritter(io.IOBase):
 ImageButton = namedtuple("ImageButton", "button place")
 
 
-def create_button_image(window, *, image, title, description=None, padx=7, text_size=11, **kwargs):
+def create_button_image(window: Union[tk.Frame, Notebook], *, image: io.BytesIO, title: str,
+                        description: Optional[str] = None, padx: Optional[int] = 7, text_size: Optional[int] = 11,
+                        **kwargs: Any) -> ImageButton:
     font = ('Arial', text_size, 'bold')
     button_text = '\n'.join((title, description)) if description else title
     button_border = tk.Frame(window, highlightbackground="#858585",
@@ -59,7 +62,7 @@ def create_button_image(window, *, image, title, description=None, padx=7, text_
     return ImageButton(button, button_border)
 
 
-def new_path(button, path):
+def new_path(button: tk.Button, path: str) -> None:
     text = button['text'].splitlines()
     if len(text) < 3:
         text.append(path)
@@ -69,14 +72,14 @@ def new_path(button, path):
     button['text'] = "\n".join(text)
 
 
-def load_recognition_gui(tab_layout, settings):
+def load_recognition_gui(tab_layout: Notebook, settings: _setting_type) -> tk.Frame:
     """Recognition Tab GUI"""
     padding = {'padx': 7, 'pady': 7}
     tab_recognition = tk.Frame(tab_layout, bg=BACKGROUND_HEX)
     tab_recognition.grid_columnconfigure(0, weight=1)
 
     # When save folder button is clicked
-    def save_path_folder():
+    def save_path_folder() -> None:
         nonlocal save_path
         if not (asked := filedialog.askdirectory(initialdir=save_path, title="Select AI Model Folder")):
             return
@@ -87,7 +90,7 @@ def load_recognition_gui(tab_layout, settings):
         recog_but.button['state'] = 'normal'
     max_size = 620, 400
 
-    def fit_center_calculation(img):
+    def fit_center_calculation(img: Image) -> None:
         """Put the loaded image into the canvas at fit it to the center"""
         nonlocal canvas
         old_size = img.size
@@ -101,7 +104,7 @@ def load_recognition_gui(tab_layout, settings):
         canvas.image = photo
 
     @ai_model.run_in_thread
-    def recognise_path():
+    def recognise_path() -> None:
         """Function is triggered when a user click on recognition button"""
         nonlocal canvas
         started = True
@@ -109,7 +112,7 @@ def load_recognition_gui(tab_layout, settings):
             return
 
         @ai_model.run_in_thread
-        def text_change():
+        def text_change() -> None:
             while True:
                 for x in range(3):
                     if not started:
@@ -194,7 +197,7 @@ def load_recognition_gui(tab_layout, settings):
     return tab_recognition
 
 
-def load_training_gui(tab_layout, settings):
+def load_training_gui(tab_layout: Notebook, settings: _setting_type) -> tk.Frame:
     """Training Tab GUI"""
     padding = {'padx': 7, 'pady': 7}
     scale_var = tk.IntVar()
@@ -206,7 +209,7 @@ def load_training_gui(tab_layout, settings):
     sys.stdout = ConsoleWritter(text_box)
 
     # When training folder button is clicked
-    def training_folder():
+    def training_folder() -> None:
         nonlocal planet_path
         if not (asked_path := filedialog.askdirectory(initialdir=planet_path, title="Select Planet Images Folder")):
             return
@@ -223,7 +226,7 @@ def load_training_gui(tab_layout, settings):
         settings.update(ai_model.save_key(PLANET_PATH_KEY, planet_path))
 
     # When save folder button is clicked
-    def save_path_folder():
+    def save_path_folder() -> None:
         nonlocal save_path
         if not (asked := filedialog.askdirectory(initialdir=save_path, title="Select Folder to Save Model")):
             return
@@ -234,7 +237,7 @@ def load_training_gui(tab_layout, settings):
 
     # When running folder button is clicked
     @ai_model.run_in_thread
-    def running_train():
+    def running_train() -> None:
         if planet_path is None:
             print("Planets path folder is not selected. Please select a path.")
         elif save_path is None:
@@ -300,7 +303,7 @@ def load_training_gui(tab_layout, settings):
     return tab_training
 
 
-def load_gui(options):
+def load_gui(options: _setting_type) -> None:
     window = tk.Tk()
     window.title("Planet Recognition")
 

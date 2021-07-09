@@ -7,6 +7,7 @@ import contextlib
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers, models
+from typing import Dict, Union, List, Callable, Any, Optional, Tuple
 
 # Constants
 SETTINGS_PATH = 'settings.json'
@@ -16,34 +17,35 @@ RECOGNITION_PATH_KEY = 'recognition_history_path'
 CLASS_KEY = 'classes_saved'
 BACKGROUND_HEX = '#acacac'
 IMAGE_WIDTH, IMAGE_HEIGHT = 700, 700
+_setting_type = Dict[str, Union[List[str], str]]
 
 
-def save(data):
+def save(data: _setting_type) -> _setting_type:
     with open(SETTINGS_PATH, 'w+') as j:
         json.dump(data, j, indent=4)
     return data
 
 
-def load():
+def load() -> _setting_type:
     with open(SETTINGS_PATH, 'r') as j:
         return json.load(j)
 
 
-def save_key(key, value):
+def save_key(key: str, value: Union[List[str], str]) -> _setting_type:
     s = load()
     s.update({key: value})
     return save(s)
 
 
-def load_settings():
+def load_settings() -> _setting_type:
     with contextlib.suppress(IOError):
         return load()
     return save({})
 
 
-def run_in_thread(func):
+def run_in_thread(func: Callable[[str, bool], Any]) -> Callable:
     """Run the decorated function in a thread, and directly run when blocking is set to True"""
-    def runner(*args, blocking=False, **kwargs):
+    def runner(*args: str, blocking: Optional[bool] = False, **kwargs: Any) -> Callable[[str, bool], threading.Thread]:
         if not blocking:
             thread = threading.Thread(target=func, args=args, kwargs=kwargs)
             thread.start()
@@ -52,7 +54,7 @@ def run_in_thread(func):
     return runner
 
 
-def create_model(objects, settings):
+def create_model(objects: int, settings: _setting_type) -> models.Sequential:
 
     # Input shape is (IMAGE_HEIGHT, IMAGE_WIDTH, 3)
     # - reduce computational time if image size is lower
@@ -111,7 +113,7 @@ def create_model(objects, settings):
 
 
 @run_in_thread
-def data_train(planet_path, settings, epochs=200):
+def data_train(planet_path: str, settings: _setting_type, epochs: Optional[int] = 200) -> None:
     BATCH_SIZE = 5
     # gets all the images from a root folder, Planet -> Jupiter, Mars, ...
     train_ds = tf.keras.preprocessing.image_dataset_from_directory(
@@ -144,10 +146,9 @@ def data_train(planet_path, settings, epochs=200):
     print("Saving data to", path)
     # saves the model
     model.save(path)
-    root_func()
 
 
-def predict_data(path, label, data):
+def predict_data(path: str, label: str, data: _setting_type) -> Tuple[str, float, str]:
     # Loads the image, and resize to the target_size
     try:
         img = keras.preprocessing.image.load_img(
@@ -181,7 +182,7 @@ def predict_data(path, label, data):
     return predicted, score, label
 
 
-def predict_single_data(path, settings):
+def predict_single_data(path: str, settings: _setting_type) -> Tuple[str, float, str]:
     path = path.replace("/", "\\")
     x = path.split('\\')[-1]
     y = x.split()[0]
@@ -189,7 +190,7 @@ def predict_single_data(path, settings):
     return predict_data(path, z.capitalize(), settings)
 
 
-def root_func():
+def root_func() -> None:
     """Run this function if you want to do some analysis on the model"""
     settings = {PLANET_PATH_KEY: r"C:\Users\sarah\PycharmProjects\Planet-Recognition\Planet",
                 RECOGNITION_PATH_KEY: r"C:\Users\sarah\PycharmProjects\training_history",
